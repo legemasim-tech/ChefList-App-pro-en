@@ -275,22 +275,26 @@ unit_system = col_opt2.radio("Unit System:", ["US Units (cups/oz)", "Metric (g/m
 if st.button("Create Recipe ✨", use_container_width=True):
     if video_url:
         with st.status(f"Calculating recipe for {portions} servings...", expanded=True) as status:
+            # FIX 1: channel_name hinzugefügt
             title_orig, transcript, description, channel_name = get_full_video_data(video_url)
-                  if transcript or description:
-                # Wir übergeben den Original-Titel an die KI
+            
+            if transcript or description:
+                # FIX 2: channel_name an Funktion übergeben
                 result = generate_smart_recipe(title_orig, channel_name, transcript, description, amazon_tag_us, portions, unit_system)
                 
-                # Wir nehmen die erste Zeile des KI-Ergebnisses als neuen Titel
-                lines = result.split('\n')
-                new_title = lines[0].replace('TITLE:', '').replace('Title:', '').strip()
-                
-                st.session_state.recipe_result_en = result
-                st.session_state.recipe_title_en = new_title # Der übersetzte Titel!
-                
-                st.session_state.counter_en += 1
-                update_global_counter()
-                status.update(label="Ready!", state="complete", expanded=False)
-            else: st.error("No data found.")
+                if result:
+                    lines = result.split('\n')
+                    new_title = lines[0].replace('TITLE:', '').replace('Title:', '').strip()
+                    
+                    st.session_state.recipe_result_en = result
+                    st.session_state.recipe_title_en = new_title
+                    st.session_state.counter_en += 1
+                    update_global_counter()
+                    status.update(label="Ready!", state="complete", expanded=False)
+                else:
+                    st.error("AI Generation failed.")
+            else:
+                st.error("No data found.")
 
 if st.session_state.get("recipe_result_en"):
     st.divider()
