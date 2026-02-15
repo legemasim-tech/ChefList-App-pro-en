@@ -58,10 +58,12 @@ def get_full_video_data(video_url):
             'writeautomaticsub': True, 
             'subtitleslangs': ['en', 'de', 'es', 'fr', 'it', 'pt'] 
         }
+        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
         
         video_title = info.get('title', 'Recipe')
+        channel_name = info.get('uploader', 'Unknown Chef')
         description = info.get('description', '') 
         
         # Suche in manuellen oder automatischen Untertiteln
@@ -102,14 +104,14 @@ def get_full_video_data(video_url):
                         if seg.get('utf8', '')
                     ])
         
-        return video_title, transcript, description
+           return video_title, transcript, description, channel_name
     except Exception as e:
         print(f"Debug Error: {e}")
         return "Recipe", None, None
-        
-def generate_smart_recipe(video_title, transcript, description, tag, portions, unit_system):
+
+def generate_smart_recipe(video_title, channel_name, transcript, description, tag, portions, unit_system):
     # Wir geben der KI jetzt auch den originalen Titel
-    combined_input = f"ORIGINAL TITLE: {video_title}\n\nTRANSCRIPT:\n{transcript}\n\nDESCRIPTION:\n{description}"
+    combined_input = f"ORIGINAL TITLE: {video_title}\nSOURCE CHANNEL: {channel_name}\n\nTRANSCRIPT:\n{transcript}\n\nDESCRIPTION:\n{description}"
     
     unit_instruction = "US UNITS (cups, oz, lbs, tsp, tbsp). If the source is metric, YOU MUST CONVERT them to US units!" if unit_system == "US Units (cups/oz)" else "METRIC (g, ml, kg, l)."
     
@@ -124,7 +126,8 @@ def generate_smart_recipe(video_title, transcript, description, tag, portions, u
     5. Write the entire recipe in ENGLISH.
     
     STRUCTURE:
-    - TITLE: [Your translated English Title]
+    - TITLE: Write the title in this exact format: "[English Recipe Name] by [Author/Channel Name]"
+       Example: "Easiest Beef Wellington by Joshua Weissman"
     - Key Data (Time, difficulty, servings: {portions})
     - Ingredients Table (Amount | Ingredient | Shop)
       -> Link: https://www.amazon.com/s?k=[INGREDIENTNAME]&tag={tag}
