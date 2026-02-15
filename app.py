@@ -236,18 +236,30 @@ if st.button("Create Recipe ✨", use_container_width=True):
             else: st.error("No data found.")
 
 if st.session_state.get("recipe_result_en"):
-    # ... (Rezept-Anzeige)
+    st.divider()
+    st.subheader(f"📖 {st.session_state.recipe_title_en}")
+    st.markdown(st.session_state.recipe_result_en.replace("Check on Amazon", "Buy on Amazon"))
     
-    # PDF generieren
-    pdf_data = create_pdf(st.session_state.recipe_result_en, st.session_state.recipe_title_en)
+    st.divider()
     
-    if pdf_data:
+    # 1. PDF generieren
+    pdf_output = create_pdf(st.session_state.recipe_result_en, st.session_state.recipe_title_en)
+    
+    # 2. Sicherstellen, dass wir echte Bytes haben
+    if pdf_output is not None:
+        # Falls pdf_output bereits bytes sind (fpdf2), ist es gut.
+        # Falls es ein String/andere Form ist, wandeln wir es um.
+        try:
+            pdf_bytes = bytes(pdf_output)
+        except:
+            pdf_bytes = pdf_output # fpdf2 gibt meist schon bytes aus
+            
         st.download_button(
             label="📄 Download PDF Recipe", 
-            data=pdf_data, 
+            data=pdf_bytes, 
             file_name="ChefList_Recipe.pdf", 
             mime="application/pdf", 
             use_container_width=True
         )
     else:
-        st.error("PDF export failed. Try again or check the recipe text.")
+        st.error("The PDF could not be generated. Please check if the recipe text contains special characters.")
