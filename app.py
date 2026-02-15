@@ -107,7 +107,7 @@ def get_full_video_data(video_url):
            return video_title, transcript, description, channel_name
     except Exception as e:
         print(f"Debug Error: {e}")
-        return "Recipe", None, None
+        return "Recipe", None, None "Unknown Chef"
 
 def generate_smart_recipe(video_title, channel_name, transcript, description, tag, portions, unit_system):
     # Wir geben der KI jetzt auch den originalen Titel
