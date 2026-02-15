@@ -203,7 +203,13 @@ with st.sidebar:
     if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
     else: st.title("🍳 ChefList Pro")
     st.info(f"Recipes created: {st.session_state.counter_en}")
+    
+    # Der bestehende Support Button
     st.markdown(f'''<a href="{pay_link_90c}" target="_blank"><button style="width: 100%; background-color: #0070ba; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">⚡ Support ChefList Pro ($0.90)</button></a>''', unsafe_allow_html=True)
+    
+    # NEU: Kleiner Hinweis-Link direkt darunter
+    st.markdown('<p style="text-align: center; font-size: 0.8em; margin-top: 10px;"><a href="https://cheflist-app-icp96yzqjyzaq9fd2bdblz.streamlit.app/" target="_blank">Switch to German Version 🇩🇪</a></p>', unsafe_allow_html=True)
+    
     st.markdown("---")
     with st.expander("ℹ️ About & Legal"):
         st.caption("**Operator:** Markus Simmel\n\n**Contact:** legemasim@gmail.com")
@@ -212,15 +218,20 @@ with st.sidebar:
         st.divider()
         st.caption("✨ As an Amazon Associate, I earn from qualifying purchases.")
         st.divider()
+        st.subheader("🛡️ Data Protection")
+        st.caption("We do not store personal data. Processing is encrypted.")
+        st.divider()
         st.caption("⚠️ **Note:** This app uses AI. AI can make mistakes – please verify cooking times and temperatures.")
 
 st.title("🍲 ChefList Pro")
 st.subheader("Convert YouTube recipes into printable PDFs")
 
-video_url = st.text_input("YouTube Video URL:", placeholder="Paste link here...")
+video_url = st.text_input("YouTube Video URL:", placeholder="https://www.youtube.com/watch?v=...")
 col_opt1, col_opt2 = st.columns(2)
 portions = col_opt1.slider("Servings:", 1, 10, 4)
-unit_system = col_opt2.radio("Unit System:", ["Metric (g/ml)", "US Units"], horizontal=True)
+
+# GEÄNDERT: US Units ist jetzt an erster Stelle (Standard)
+unit_system = col_opt2.radio("Unit System:", ["US Units (cups/oz)", "Metric (g/ml)"], horizontal=True)
 
 if st.button("Create Recipe ✨", use_container_width=True):
     if video_url:
