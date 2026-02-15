@@ -50,31 +50,30 @@ def get_total_count():
 # --- 2. HELPER FUNCTIONS ---
 def get_full_video_data(video_url):
     try:
-        # Wir sagen yt_dlp, dass es nach ALLEN verfügbaren Untertiteln suchen soll ('all')
+        # Wir suchen gezielt nach gängigen Sprachen, das ist schneller und stabiler als 'all'
         ydl_opts = {
             'quiet': True, 
             'skip_download': True, 
             'writesubtitles': True, 
             'writeautomaticsub': True, 
-            'subtitleslangs': ['all']  # <--- Geändert: Sucht in jeder Sprache
+            'subtitleslangs': ['en', 'de', 'es', 'fr', 'it', 'pt'] 
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
         
         video_title = info.get('title', 'Recipe')
         description = info.get('description', '') 
+        
+        # Suche in manuellen oder automatischen Untertiteln
         subs = info.get('subtitles') or info.get('automatic_captions')
         transcript = ""
         
         if subs:
             target_url = None
-            # Prioritäten-Liste: 
-            # 1. Wir bevorzugen Englisch, falls vorhanden.
-            # 2. Wenn nicht, nehmen wir die ERSTE verfügbare Sprache aus der Liste.
-            preferred_langs = ['en', 'en-orig', 'en-US', 'de', 'de-orig']
-            
-            # Erst nach Favoriten suchen
-            for lang in preferred_langs:
+            # 1. Priorität: Wir suchen nach unseren Hauptsprachen
+            # In der EN-App wird EN bevorzugt, in der DE-App DE.
+            # Aber wir nehmen am Ende jede dieser Sprachen an.
+            for lang in ['en', 'de', 'en-orig', 'de-orig', 'es', 'fr']:
                 if lang in subs:
                     for f in subs[lang]:
                         if f.get('ext') == 'json3':
@@ -82,10 +81,10 @@ def get_full_video_data(video_url):
                             break
                     if target_url: break
             
-            # Wenn kein Favorit gefunden wurde, nimm einfach IRGENDWELCHE Untertitel
+            # 2. Fallback: Wenn unsere Wunschsprachen nicht da sind, nimm IRGENDWAS
             if not target_url:
-                for lang in subs:
-                    for f in subs[lang]:
+                for lang_code in subs.keys():
+                    for f in subs[lang_code]:
                         if f.get('ext') == 'json3':
                             target_url = f.get('url')
                             break
@@ -93,13 +92,21 @@ def get_full_video_data(video_url):
 
             if target_url:
                 res = requests.get(target_url)
-                if 'json3' in target_url:
+                if res.status_code == 200:
                     data = res.json()
-                    transcript = " ".join([seg.get('utf8', '').strip() for event in data.get('events', []) if 'segs' in event for seg in event['segs'] if seg.get('utf8', '')])
+                    transcript = " ".join([
+                        seg.get('utf8', '').strip() 
+                        for event in data.get('events', []) 
+                        if 'segs' in event 
+                        for seg in event['segs'] 
+                        if seg.get('utf8', '')
+                    ])
         
         return video_title, transcript, description
-    except:
+    except Exception as e:
+        print(f"Debug Error: {e}")
         return "Recipe", None, None
+        
 def generate_smart_recipe(transcript, description, tag, portions, unit_system):
     combined_input = f"VIDEO TITLE:\n{transcript}\n\nINFO TEXT/DESCRIPTION:\n{description}"
     unit_instruction = "US UNITS (cups, oz, lbs, tsp, tbsp)" if unit_system == "US Units" else "METRIC (g, ml, kg, l)"
