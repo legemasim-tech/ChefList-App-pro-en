@@ -248,7 +248,7 @@ with st.sidebar:
     st.markdown(f'''<a href="{pay_link_90c}" target="_blank"><button style="width: 100%; background-color: #0070ba; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">⚡ Support ChefList Pro ($0.90)</button></a>''', unsafe_allow_html=True)
     
     # NEU: Kleiner Hinweis-Link direkt darunter
-    st.markdown('<p style="text-align: center; font-size: 0.8em; margin-top: 10px;"><a href="https://cheflist-app-icp96yzqjyzaq9fd2bdblz.streamlit.app/" target="_blank">Switch to German Version</a></p>', unsafe_allow_html=True)
+    st.markdown('<p style="text-align: center; font-size: 0.8em; margin-top: 10px;"><a href="https://cheflist-app-de.streamlit.app/" target="_blank">Switch to German Version</a></p>', unsafe_allow_html=True)
     
     st.markdown("---")
     with st.expander("ℹ️ About & Legal"):
