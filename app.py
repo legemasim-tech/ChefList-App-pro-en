@@ -107,28 +107,31 @@ def get_full_video_data(video_url):
         print(f"Debug Error: {e}")
         return "Recipe", None, None
         
-def generate_smart_recipe(transcript, description, tag, portions, unit_system):
-    combined_input = f"VIDEO TITLE:\n{transcript}\n\nINFO TEXT/DESCRIPTION:\n{description}"
-    unit_instruction = "US UNITS (cups, oz, lbs, tsp, tbsp)" if unit_system == "US Units" else "METRIC (g, ml, kg, l)"
+def generate_smart_recipe(video_title, transcript, description, tag, portions, unit_system):
+    # Wir geben der KI jetzt auch den originalen Titel
+    combined_input = f"ORIGINAL TITLE: {video_title}\n\nTRANSCRIPT:\n{transcript}\n\nDESCRIPTION:\n{description}"
+    
+    unit_instruction = "US UNITS (cups, oz, lbs, tsp, tbsp). If the source is metric, YOU MUST CONVERT them to US units!" if unit_system == "US Units (cups/oz)" else "METRIC (g, ml, kg, l)."
     
     system_prompt = f"""
     You are a professional chef and a high-precision mathematician.
     
     MAIN TASK: 
-    1. Identify the original serving size from the video (usually 2 or 4).
-    2. Recalculate all quantities EXACTLY for {portions} person(s). 
-    3. The numbers in your table MUST change proportionally based on the number of portions ({portions}). Double-check your math!
-    4. Write the entire recipe in ENGLISH.
+    1. TRANSLATE the recipe title into an appealing English title.
+    2. Identify the original serving size from the video.
+    3. Recalculate and CONVERT all quantities EXACTLY for {portions} person(s). 
+    4. IMPORTANT: Use {unit_instruction}
+    5. Write the entire recipe in ENGLISH.
     
     STRUCTURE:
-    1. Key Data (Cooking time, difficulty, servings: {portions})
-    2. Ingredients Table (Columns: Amount | Ingredient | Shop)
-       -> EVERY ingredient needs a link in the 'Shop' column: https://www.amazon.com/s?k=[INGREDIENTNAME]&tag={tag}
-       -> Link text: '🛒 Buy on Amazon*'
-    3. Instructions (Step-by-step, adjust quantities here as well for {portions} persons!)
+    - TITLE: [Your translated English Title]
+    - Key Data (Time, difficulty, servings: {portions})
+    - Ingredients Table (Amount | Ingredient | Shop)
+      -> Link: https://www.amazon.com/s?k=[INGREDIENTNAME]&tag={tag}
+    - Instructions (Step-by-step)
     
-    IMPORTANT: Use {unit_instruction}. Always write the unit after the number.
-    """
+    Start your response directly with the TITLE."""
+
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
@@ -267,12 +270,19 @@ unit_system = col_opt2.radio("Unit System:", ["US Units (cups/oz)", "Metric (g/m
 
 if st.button("Create Recipe ✨", use_container_width=True):
     if video_url:
-        with st.status(f"Calculating recipe for {portions} servings... this may take a few seconds.", expanded=True) as status:
-            title, transcript, description = get_full_video_data(video_url)
+        with st.status(f"Calculating recipe for {portions} servings...", expanded=True) as status:
+            title_orig, transcript, description = get_full_video_data(video_url)
             if transcript or description:
-                result = generate_smart_recipe(transcript, description, amazon_tag_us, portions, unit_system)
+                # Wir übergeben den Original-Titel an die KI
+                result = generate_smart_recipe(title_orig, transcript, description, amazon_tag_us, portions, unit_system)
+                
+                # Wir nehmen die erste Zeile des KI-Ergebnisses als neuen Titel
+                lines = result.split('\n')
+                new_title = lines[0].replace('TITLE:', '').replace('Title:', '').strip()
+                
                 st.session_state.recipe_result_en = result
-                st.session_state.recipe_title_en = title
+                st.session_state.recipe_title_en = new_title # Der übersetzte Titel!
+                
                 st.session_state.counter_en += 1
                 update_global_counter()
                 status.update(label="Ready!", state="complete", expanded=False)
