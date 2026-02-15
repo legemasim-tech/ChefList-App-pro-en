@@ -50,31 +50,56 @@ def get_total_count():
 # --- 2. HELPER FUNCTIONS ---
 def get_full_video_data(video_url):
     try:
-        ydl_opts = {'quiet': True, 'skip_download': True, 'writesubtitles': True, 'writeautomaticsub': True, 'subtitleslangs': ['en', 'de']}
+        # Wir sagen yt_dlp, dass es nach ALLEN verfügbaren Untertiteln suchen soll ('all')
+        ydl_opts = {
+            'quiet': True, 
+            'skip_download': True, 
+            'writesubtitles': True, 
+            'writeautomaticsub': True, 
+            'subtitleslangs': ['all']  # <--- Geändert: Sucht in jeder Sprache
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
+        
         video_title = info.get('title', 'Recipe')
         description = info.get('description', '') 
         subs = info.get('subtitles') or info.get('automatic_captions')
         transcript = ""
+        
         if subs:
             target_url = None
-            for lang in ['en', 'en-orig', 'de']:
+            # Prioritäten-Liste: 
+            # 1. Wir bevorzugen Englisch, falls vorhanden.
+            # 2. Wenn nicht, nehmen wir die ERSTE verfügbare Sprache aus der Liste.
+            preferred_langs = ['en', 'en-orig', 'en-US', 'de', 'de-orig']
+            
+            # Erst nach Favoriten suchen
+            for lang in preferred_langs:
                 if lang in subs:
                     for f in subs[lang]:
                         if f.get('ext') == 'json3':
                             target_url = f.get('url')
                             break
                     if target_url: break
+            
+            # Wenn kein Favorit gefunden wurde, nimm einfach IRGENDWELCHE Untertitel
+            if not target_url:
+                for lang in subs:
+                    for f in subs[lang]:
+                        if f.get('ext') == 'json3':
+                            target_url = f.get('url')
+                            break
+                    if target_url: break
+
             if target_url:
                 res = requests.get(target_url)
                 if 'json3' in target_url:
                     data = res.json()
                     transcript = " ".join([seg.get('utf8', '').strip() for event in data.get('events', []) if 'segs' in event for seg in event['segs'] if seg.get('utf8', '')])
+        
         return video_title, transcript, description
     except:
         return "Recipe", None, None
-
 def generate_smart_recipe(transcript, description, tag, portions, unit_system):
     combined_input = f"VIDEO TITLE:\n{transcript}\n\nINFO TEXT/DESCRIPTION:\n{description}"
     unit_instruction = "US UNITS (cups, oz, lbs, tsp, tbsp)" if unit_system == "US Units" else "METRIC (g, ml, kg, l)"
