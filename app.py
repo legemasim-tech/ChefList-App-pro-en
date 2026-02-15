@@ -128,6 +128,7 @@ def generate_smart_recipe(video_title, transcript, description, tag, portions, u
     - Key Data (Time, difficulty, servings: {portions})
     - Ingredients Table (Amount | Ingredient | Shop)
       -> Link: https://www.amazon.com/s?k=[INGREDIENTNAME]&tag={tag}
+      -> Link-Text: '🛒 buy on Amazon*'
     - Instructions (Step-by-step)
     
     Start your response directly with the TITLE."""
