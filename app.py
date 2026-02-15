@@ -275,10 +275,10 @@ unit_system = col_opt2.radio("Unit System:", ["US Units (cups/oz)", "Metric (g/m
 if st.button("Create Recipe ✨", use_container_width=True):
     if video_url:
         with st.status(f"Calculating recipe for {portions} servings...", expanded=True) as status:
-            title_orig, transcript, description = get_full_video_data(video_url)
-            if transcript or description:
+            title_orig, transcript, description, channel_name = get_full_video_data(video_url)
+                  if transcript or description:
                 # Wir übergeben den Original-Titel an die KI
-                result = generate_smart_recipe(title_orig, transcript, description, amazon_tag_us, portions, unit_system)
+                result = generate_smart_recipe(title_orig, channel_name, transcript, description, amazon_tag_us, portions, unit_system)
                 
                 # Wir nehmen die erste Zeile des KI-Ergebnisses als neuen Titel
                 lines = result.split('\n')
