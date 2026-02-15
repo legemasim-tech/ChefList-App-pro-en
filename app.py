@@ -12,12 +12,12 @@ try:
 except:
     api_key = None
 
-# US Tag for amazon.com
+# Changed to .com and a generic or new tag for the US market
 amazon_tag_us = "cheflist21-20" 
 paypal_email = "legemasim@gmail.com"
 
-# Link pointing to the German version for support
-german_app_link = "https://cheflist-app-icp96yzqjyzaq9fd2bdblz.streamlit.app/"
+# Update payment link for international audience (USD/EUR)
+pay_link_90c = f"https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business={paypal_email}&item_name=ChefList_Pro_Support&amount=0.90&currency_code=USD"
 
 if not api_key:
     st.error("Please add your OpenAI API Key to Streamlit Secrets!")
@@ -39,7 +39,7 @@ def update_global_counter():
 
 def get_total_count():
     file_path = "total_recipes_en.txt"
-    base_value = 17 
+    base_value = 17 # Starting value for social proof
     if os.path.exists(file_path):
         try:
             with open(file_path, "r") as f: 
@@ -81,17 +81,20 @@ def generate_smart_recipe(transcript, description, tag, portions, unit_system):
     
     system_prompt = f"""
     You are a professional chef and a high-precision mathematician.
+    
     MAIN TASK: 
     1. Identify the original serving size from the video (usually 2 or 4).
     2. Recalculate all quantities EXACTLY for {portions} person(s). 
-    3. The numbers in your table MUST change proportionally based on the number of portions ({portions}).
+    3. The numbers in your table MUST change proportionally based on the number of portions ({portions}). Double-check your math!
     4. Write the entire recipe in ENGLISH.
+    
     STRUCTURE:
     1. Key Data (Cooking time, difficulty, servings: {portions})
     2. Ingredients Table (Columns: Amount | Ingredient | Shop)
        -> EVERY ingredient needs a link in the 'Shop' column: https://www.amazon.com/s?k=[INGREDIENTNAME]&tag={tag}
        -> Link text: '🛒 Buy on Amazon*'
     3. Instructions (Step-by-step, adjust quantities here as well for {portions} persons!)
+    
     IMPORTANT: Use {unit_instruction}. Always write the unit after the number.
     """
     try:
@@ -104,10 +107,16 @@ def generate_smart_recipe(transcript, description, tag, portions, unit_system):
 
 # --- 3. PDF GENERATOR ---
 def clean_for_pdf(text):
+    # Deine bewährte Reinigungs-Logik
     replacements = {'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss', '€': 'Euro'}
     for char, replacement in replacements.items():
         text = text.replace(char, replacement)
+    
+    # WICHTIG: Die KI nutzt im Englischen oft "smarte" Anführungszeichen (curly quotes)
+    # Diese müssen wir für das PDF-Modul glätten:
     text = text.replace('“', '"').replace('”', '"').replace('’', "'").replace('–', '-')
+    
+    # Entfernt alles Nicht-ASCII (was das PDF-Modul zum Absturz bringt)
     text = re.sub(r'[^\x00-\x7F]+', '', text)
     text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
     return text
@@ -120,68 +129,81 @@ def create_pdf(text_content, recipe_title):
         pdf.add_page()
         pdf.set_fill_color(230, 230, 230) 
         pdf.set_font("Arial", style="B", size=14)
+        
+        # Header - Wir schreiben "Recipe:" statt "Rezept:"
         display_title = clean_for_pdf(recipe_title if len(recipe_title) <= 40 else recipe_title[:37] + "...")
         pdf.cell(190, 15, txt=f"Recipe: {display_title}", ln=True, align='C', fill=True)
         pdf.ln(5)
+        
         lines = text_content.split('\n')
         is_instruction = False
         for line in lines:
             line = line.strip()
             if not line or '---' in line: continue
             line = clean_for_pdf(line)
+            
+            # WICHTIG: Wir prüfen auf englische Schlüsselwörter
             if any(word in line for word in ['Instructions', 'Preparation', 'Directions']):
                 is_instruction = True
                 pdf.ln(5)
                 pdf.set_font("Arial", style="B", size=12)
                 pdf.cell(0, 10, txt="Instructions:", ln=True)
                 continue
+                
+            # Englische Header erkennen
             headers = ['Time:', 'Difficulty:', 'Temperature:', 'Servings:', 'Units:']
             if any(line.startswith(h) for h in headers):
                 pdf.set_font("Arial", style="B", size=11)
                 pdf.cell(0, 8, txt=line, ln=True)
                 continue
+                
             pdf.set_x(10)
             if '|' in line and not is_instruction:
                 parts = [p.strip() for p in line.split('|') if p.strip()]
                 if len(parts) >= 2:
+                    # Spaltenköpfe auf Englisch prüfen
                     if "Amount" in parts[0] or "Ingredient" in parts[1]:
                         pdf.set_font("Arial", style="B", size=10)
                         content = "AMOUNT - INGREDIENT"
                     else:
                         pdf.set_font("Arial", style="B", size=11)
                         content = f"[  ] {parts[0].replace('*','')} {parts[1].replace('*','')}"
+                    
+                    # Breite auf 185 reduzieren, um den "Horizontal Space" Fehler zu vermeiden
                     pdf.cell(185, 8, txt=content, ln=True)
                     pdf.set_draw_color(220, 220, 220)
                     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
             else:
                 pdf.set_font("Arial", size=10)
+                # multi_cell ebenfalls leicht schmaler (185 statt 190)
                 pdf.multi_cell(185, 7, txt=line.replace('*', ''), align='L')
                 if is_instruction: pdf.ln(2)
+                
         pdf.ln(10)
         pdf.set_font("Arial", style="I", size=10)
         pdf.cell(0, 10, txt="Enjoy your meal - Team ChefList Pro!", ln=True, align='C')
+        
+        # In fpdf2 liefert output() direkt Bytes
         return pdf.output()
     except Exception as e:
+        # Das schreibt den Fehler in deine Streamlit Logs
         print(f"PDF Debug: {e}")
         return None
-
+        
 # --- 4. STREAMLIT INTERFACE ---
 st.set_page_config(page_title="ChefList Pro EN", page_icon="🍲", layout="centered")
 
+# Custom Logo CSS
 st.markdown("<style>[data-testid='stSidebar'] img { background-color: white; padding: 10px; border-radius: 12px; border: 2px solid #e0e0e0; margin-bottom: 20px; }</style>", unsafe_allow_html=True)
 
 if "counter_en" not in st.session_state: st.session_state.counter_en = 0
 if "recipe_result_en" not in st.session_state: st.session_state.recipe_result_en = None
-if "recipe_title_en" not in st.session_state: st.session_state.recipe_title_en = ""
 
 with st.sidebar:
     if os.path.exists("logo.png"): st.image("logo.png", use_container_width=True)
     else: st.title("🍳 ChefList Pro")
     st.info(f"Recipes created: {st.session_state.counter_en}")
-    
-    # Updated to point to the German App
-    st.markdown(f'''<a href="{german_app_link}" target="_blank"><button style="width: 100%; background-color: #0070ba; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">⚡ ChefList Pro (German Version)</button></a>''', unsafe_allow_html=True)
-    
+    st.markdown(f'''<a href="{pay_link_90c}" target="_blank"><button style="width: 100%; background-color: #0070ba; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold;">⚡ Support ChefList Pro ($0.90)</button></a>''', unsafe_allow_html=True)
     st.markdown("---")
     with st.expander("ℹ️ About & Legal"):
         st.caption("**Operator:** Markus Simmel\n\n**Contact:** legemasim@gmail.com")
@@ -190,7 +212,7 @@ with st.sidebar:
         st.divider()
         st.caption("✨ As an Amazon Associate, I earn from qualifying purchases.")
         st.divider()
-        st.caption("⚠️ **Note:** This app uses AI. AI can make mistakes – please verify cooking times.")
+        st.caption("⚠️ **Note:** This app uses AI. AI can make mistakes – please verify cooking times and temperatures.")
 
 st.title("🍲 ChefList Pro")
 st.subheader("Convert YouTube recipes into printable PDFs")
@@ -198,13 +220,11 @@ st.subheader("Convert YouTube recipes into printable PDFs")
 video_url = st.text_input("YouTube Video URL:", placeholder="Paste link here...")
 col_opt1, col_opt2 = st.columns(2)
 portions = col_opt1.slider("Servings:", 1, 10, 4)
-
-# Swapped order: US Units is now first (default)
-unit_system = col_opt2.radio("Unit System:", ["US Units", "Metric (g/ml)"], horizontal=True)
+unit_system = col_opt2.radio("Unit System:", ["Metric (g/ml)", "US Units"], horizontal=True)
 
 if st.button("Create Recipe ✨", use_container_width=True):
     if video_url:
-        with st.status(f"Calculating for {portions} servings...", expanded=True) as status:
+        with st.status(f"Calculating recipe for {portions} servings... this may take a few seconds.", expanded=True) as status:
             title, transcript, description = get_full_video_data(video_url)
             if transcript or description:
                 result = generate_smart_recipe(transcript, description, amazon_tag_us, portions, unit_system)
@@ -219,10 +239,27 @@ if st.session_state.get("recipe_result_en"):
     st.divider()
     st.subheader(f"📖 {st.session_state.recipe_title_en}")
     st.markdown(st.session_state.recipe_result_en.replace("Check on Amazon", "Buy on Amazon"))
+    
     st.divider()
     
-    pdf_data = create_pdf(st.session_state.recipe_result_en, st.session_state.recipe_title_en)
-    if pdf_data:
-        st.download_button("📄 Download PDF Recipe", pdf_data, file_name="ChefList_Recipe.pdf", mime="application/pdf", use_container_width=True)
+    # 1. PDF generieren
+    pdf_output = create_pdf(st.session_state.recipe_result_en, st.session_state.recipe_title_en)
+    
+    # 2. Sicherstellen, dass wir echte Bytes haben
+    if pdf_output is not None:
+        # Falls pdf_output bereits bytes sind (fpdf2), ist es gut.
+        # Falls es ein String/andere Form ist, wandeln wir es um.
+        try:
+            pdf_bytes = bytes(pdf_output)
+        except:
+            pdf_bytes = pdf_output # fpdf2 gibt meist schon bytes aus
+            
+        st.download_button(
+            label="📄 Download PDF Recipe", 
+            data=pdf_bytes, 
+            file_name="ChefList_Recipe.pdf", 
+            mime="application/pdf", 
+            use_container_width=True
+        )
     else:
-        st.error("PDF export failed.")
+        st.error("The PDF could not be generated. Please check if the recipe text contains special characters.")
