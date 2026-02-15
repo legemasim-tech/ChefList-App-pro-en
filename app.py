@@ -105,78 +105,90 @@ def generate_smart_recipe(transcript, description, tag, portions, unit_system):
         return response.choices[0].message.content
     except: return None
 
-# --- 3. PDF GENERATOR (Based on working German version) ---
+# --- 3. PDF GENERATOR ---
 def clean_for_pdf(text):
-    # We keep your working cleaning logic
+    # Deine bewährte Reinigungs-Logik
     replacements = {'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue', 'ß': 'ss', '€': 'Euro'}
     for char, replacement in replacements.items():
         text = text.replace(char, replacement)
-    # Remove everything non-ASCII (crucial for fpdf2 standard fonts)
+    
+    # WICHTIG: Die KI nutzt im Englischen oft "smarte" Anführungszeichen (curly quotes)
+    # Diese müssen wir für das PDF-Modul glätten:
+    text = text.replace('“', '"').replace('”', '"').replace('’', "'").replace('–', '-')
+    
+    # Entfernt alles Nicht-ASCII (was das PDF-Modul zum Absturz bringt)
     text = re.sub(r'[^\x00-\x7F]+', '', text)
     text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
     return text
 
 def create_pdf(text_content, recipe_title):
-    pdf = FPDF()
-    pdf.set_left_margin(10)
-    pdf.set_right_margin(10)
-    pdf.add_page()
-    pdf.set_fill_color(230, 230, 230) 
-    pdf.set_font("Arial", style="B", size=14)
-    
-    # Header - English title
-    display_title = clean_for_pdf(recipe_title if len(recipe_title) <= 40 else recipe_title[:37] + "...")
-    pdf.cell(190, 15, txt=f"Recipe: {display_title}", ln=True, align='C', fill=True)
-    pdf.ln(5)
-    
-    lines = text_content.split('\n')
-    is_instruction = False
-    for line in lines:
-        line = line.strip()
-        if not line or '---' in line: continue
-        line = clean_for_pdf(line)
+    try:
+        pdf = FPDF()
+        pdf.set_left_margin(10)
+        pdf.set_right_margin(10)
+        pdf.add_page()
+        pdf.set_fill_color(230, 230, 230) 
+        pdf.set_font("Arial", style="B", size=14)
         
-        # KEY CHANGE: Match English keywords from the AI output
-        if any(word in line for word in ['Instructions', 'Preparation', 'Directions']):
-            is_instruction = True
-            pdf.ln(5)
-            pdf.set_font("Arial", style="B", size=12)
-            pdf.cell(0, 10, txt="Instructions:", ln=True)
-            continue
+        # Header - Wir schreiben "Recipe:" statt "Rezept:"
+        display_title = clean_for_pdf(recipe_title if len(recipe_title) <= 40 else recipe_title[:37] + "...")
+        pdf.cell(190, 15, txt=f"Recipe: {display_title}", ln=True, align='C', fill=True)
+        pdf.ln(5)
+        
+        lines = text_content.split('\n')
+        is_instruction = False
+        for line in lines:
+            line = line.strip()
+            if not line or '---' in line: continue
+            line = clean_for_pdf(line)
             
-        # KEY CHANGE: English headers
-        headers = ['Time:', 'Difficulty:', 'Temperature:', 'Servings:', 'Units:']
-        if any(line.startswith(h) for h in headers):
-            pdf.set_font("Arial", style="B", size=11)
-            pdf.cell(0, 8, txt=line, ln=True)
-            continue
-            
-        pdf.set_x(10)
-        if '|' in line and not is_instruction:
-            parts = [p.strip() for p in line.split('|') if p.strip()]
-            if len(parts) >= 2:
-                # KEY CHANGE: Column naming for English
-                if "Amount" in parts[0] or "Ingredient" in parts[1]:
-                    pdf.set_font("Arial", style="B", size=10)
-                    content = "AMOUNT - INGREDIENT"
-                else:
-                    pdf.set_font("Arial", style="B", size=11)
-                    content = f"[  ] {parts[0].replace('*','')} {parts[1].replace('*','')}"
+            # WICHTIG: Wir prüfen auf englische Schlüsselwörter
+            if any(word in line for word in ['Instructions', 'Preparation', 'Directions']):
+                is_instruction = True
+                pdf.ln(5)
+                pdf.set_font("Arial", style="B", size=12)
+                pdf.cell(0, 10, txt="Instructions:", ln=True)
+                continue
                 
-                pdf.cell(180, 8, txt=content, ln=True) # Fixed width 180 to avoid space error
-                pdf.set_draw_color(220, 220, 220)
-                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-        else:
-            pdf.set_font("Arial", size=10)
-            pdf.multi_cell(190, 7, txt=line.replace('*', ''), align='L')
-            if is_instruction: pdf.ln(2)
-            
-    pdf.ln(10)
-    pdf.set_font("Arial", style="I", size=10)
-    pdf.cell(0, 10, txt="Enjoy your meal - Team ChefList Pro!", ln=True, align='C')
-    
-    # Use output() directly for fpdf2
-    return pdf.output()
+            # Englische Header erkennen
+            headers = ['Time:', 'Difficulty:', 'Temperature:', 'Servings:', 'Units:']
+            if any(line.startswith(h) for h in headers):
+                pdf.set_font("Arial", style="B", size=11)
+                pdf.cell(0, 8, txt=line, ln=True)
+                continue
+                
+            pdf.set_x(10)
+            if '|' in line and not is_instruction:
+                parts = [p.strip() for p in line.split('|') if p.strip()]
+                if len(parts) >= 2:
+                    # Spaltenköpfe auf Englisch prüfen
+                    if "Amount" in parts[0] or "Ingredient" in parts[1]:
+                        pdf.set_font("Arial", style="B", size=10)
+                        content = "AMOUNT - INGREDIENT"
+                    else:
+                        pdf.set_font("Arial", style="B", size=11)
+                        content = f"[  ] {parts[0].replace('*','')} {parts[1].replace('*','')}"
+                    
+                    # Breite auf 185 reduzieren, um den "Horizontal Space" Fehler zu vermeiden
+                    pdf.cell(185, 8, txt=content, ln=True)
+                    pdf.set_draw_color(220, 220, 220)
+                    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+            else:
+                pdf.set_font("Arial", size=10)
+                # multi_cell ebenfalls leicht schmaler (185 statt 190)
+                pdf.multi_cell(185, 7, txt=line.replace('*', ''), align='L')
+                if is_instruction: pdf.ln(2)
+                
+        pdf.ln(10)
+        pdf.set_font("Arial", style="I", size=10)
+        pdf.cell(0, 10, txt="Enjoy your meal - Team ChefList Pro!", ln=True, align='C')
+        
+        # In fpdf2 liefert output() direkt Bytes
+        return pdf.output()
+    except Exception as e:
+        # Das schreibt den Fehler in deine Streamlit Logs
+        print(f"PDF Debug: {e}")
+        return None
         
 # --- 4. STREAMLIT INTERFACE ---
 st.set_page_config(page_title="ChefList Pro EN", page_icon="🍲", layout="centered")
@@ -224,11 +236,18 @@ if st.button("Create Recipe ✨", use_container_width=True):
             else: st.error("No data found.")
 
 if st.session_state.get("recipe_result_en"):
-    st.divider()
-    st.subheader(f"📖 {st.session_state.recipe_title_en}")
-    st.markdown(st.session_state.recipe_result_en.replace("Check on Amazon", "Buy on Amazon"))
-    st.divider()
-    try:
-        pdf_data = create_pdf(st.session_state.recipe_result_en, st.session_state.recipe_title_en)
-        st.download_button("📄 Download PDF Recipe", pdf_data, file_name="ChefList_Recipe.pdf", mime="application/pdf", use_container_width=True)
-    except: st.error("PDF export failed.")
+    # ... (Rezept-Anzeige)
+    
+    # PDF generieren
+    pdf_data = create_pdf(st.session_state.recipe_result_en, st.session_state.recipe_title_en)
+    
+    if pdf_data:
+        st.download_button(
+            label="📄 Download PDF Recipe", 
+            data=pdf_data, 
+            file_name="ChefList_Recipe.pdf", 
+            mime="application/pdf", 
+            use_container_width=True
+        )
+    else:
+        st.error("PDF export failed. Try again or check the recipe text.")
