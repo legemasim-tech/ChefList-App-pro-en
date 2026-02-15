@@ -50,7 +50,7 @@ def get_total_count():
 # --- 2. HELPER FUNCTIONS ---
 def get_full_video_data(video_url):
     try:
-        # Wir suchen gezielt nach gängigen Sprachen, das ist schneller und stabiler als 'all'
+        # Wir suchen gezielt nach gängigen Sprachen
         ydl_opts = {
             'quiet': True, 
             'skip_download': True, 
@@ -72,9 +72,7 @@ def get_full_video_data(video_url):
         
         if subs:
             target_url = None
-            # 1. Priorität: Wir suchen nach unseren Hauptsprachen
-            # In der EN-App wird EN bevorzugt, in der DE-App DE.
-            # Aber wir nehmen am Ende jede dieser Sprachen an.
+            # Priorität für Sprachen
             for lang in ['en', 'de', 'en-orig', 'de-orig', 'es', 'fr']:
                 if lang in subs:
                     for f in subs[lang]:
@@ -83,7 +81,7 @@ def get_full_video_data(video_url):
                             break
                     if target_url: break
             
-            # 2. Fallback: Wenn unsere Wunschsprachen nicht da sind, nimm IRGENDWAS
+            # Fallback auf irgendwelche Untertitel
             if not target_url:
                 for lang_code in subs.keys():
                     for f in subs[lang_code]:
@@ -104,10 +102,13 @@ def get_full_video_data(video_url):
                         if seg.get('utf8', '')
                     ])
         
-           return video_title, transcript, description, channel_name
+        # WICHTIG: Diese Zeile muss genau unter dem 'if subs:' Block stehen
+        return video_title, transcript, description, channel_name
+
     except Exception as e:
         print(f"Debug Error: {e}")
-        return "Recipe", None, None "Unknown Chef"
+        # WICHTIG: Hier geben wir 4 Werte zurück für die Sicherheit
+        return "Recipe", None, None, "Unknown Chef"
 
 def generate_smart_recipe(video_title, channel_name, transcript, description, tag, portions, unit_system):
     # Wir geben der KI jetzt auch den originalen Titel
