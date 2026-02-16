@@ -263,10 +263,11 @@ with st.sidebar:
         st.divider()
         st.caption("⚠️ **Note:** This app uses AI. AI can make mistakes – please verify cooking times and temperatures.")
 
-st.markdown("---")
+# --- ADMIN BEREICH (JETZT KORREKT EINRÜCKT) ---
+    st.markdown("---")
     if st.checkbox("🔑 Admin Feedback Access"):
         admin_pw = st.text_input("Password", type="password")
-        if admin_pw == "dein_geheimes_passwort": # Ändere "dein_geheimes_passwort" in dein Wunschpasswort
+        if admin_pw == "dein_geheimes_passwort": # Ersetze dies durch dein Passwort
             if os.path.exists("user_feedback.txt"):
                 with open("user_feedback.txt", "r") as f:
                     content = f.read()
