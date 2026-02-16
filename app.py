@@ -263,6 +263,26 @@ with st.sidebar:
         st.divider()
         st.caption("⚠️ **Note:** This app uses AI. AI can make mistakes – please verify cooking times and temperatures.")
 
+st.markdown("---")
+    if st.checkbox("🔑 Admin Feedback Access"):
+        admin_pw = st.text_input("Password", type="password")
+        if admin_pw == "dein_geheimes_passwort": # Ändere "dein_geheimes_passwort" in dein Wunschpasswort
+            if os.path.exists("user_feedback.txt"):
+                with open("user_feedback.txt", "r") as f:
+                    content = f.read()
+                if content:
+                    st.text_area("User Messages:", value=content, height=300)
+                    if st.button("Clear Feedback Log"):
+                        with open("user_feedback.txt", "w") as f:
+                            f.write("")
+                        st.rerun()
+                else:
+                    st.write("No messages yet.")
+            else:
+                st.write("File not found.")
+        elif admin_pw:
+            st.error("Wrong password")
+
 st.title("🍲 ChefList Pro")
 st.subheader("Convert YouTube recipes into printable PDFs")
 
