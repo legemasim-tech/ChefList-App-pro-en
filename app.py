@@ -267,7 +267,7 @@ with st.sidebar:
         st.divider()
         if st.checkbox("🔑 Admin Access"):
             admin_pw = st.text_input("Password", type="password", key="admin_pw_input")
-            if admin_pw == "dein_geheimes_passwort": # Ersetze dies durch dein Passwort!
+            if admin_pw == "Gemini_Cheflist_pw": # Ersetze dies durch dein Passwort!
                 if os.path.exists("user_feedback.txt"):
                     with open("user_feedback.txt", "r") as f:
                         content = f.read()
