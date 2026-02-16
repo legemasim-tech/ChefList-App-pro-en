@@ -325,3 +325,24 @@ if st.session_state.get("recipe_result_en"):
         )
     else:
         st.error("The PDF could not be generated. Please check if the recipe text contains special characters.")
+
+# --- FEEDBACK SECTION ---
+st.divider()
+st.subheader("Help us improve! 🍲")
+with st.form("feedback_form"):
+    feedback_text = st.text_area("What can we do better? (Errors, wishes, ideas)")
+    user_email = st.text_input("Your email (optional, if you want a reply)")
+    submit_feedback = st.form_submit_button("Send Feedback ✨")
+
+    if submit_feedback:
+        if feedback_text:
+            # Hier speichern wir das Feedback in einer einfachen Textdatei
+            feedback_entry = f"Email: {user_email}\nFeedback: {feedback_text}\n---\n"
+            try:
+                with open("user_feedback.txt", "a") as f:
+                    f.write(feedback_entry)
+                st.success("Thank you! Your feedback has been saved. We'll look into it! 🙌")
+            except:
+                st.error("Something went wrong. Please try again later.")
+        else:
+            st.warning("Please enter some text before sending.")
