@@ -249,9 +249,16 @@ with st.sidebar:
     
     # NEU: Kleiner Hinweis-Link direkt darunter
     st.markdown('<p style="text-align: center; font-size: 0.8em; margin-top: 10px;"><a href="https://cheflist-app-de.streamlit.app/" target="_blank">Switch to German Version</a></p>', unsafe_allow_html=True)
-    
+ # --- PRÜFUNG AUF NEUES FEEDBACK ---
+    new_feedback_indicator = ""
+    if os.path.exists("user_feedback.txt"):
+        if os.path.getsize("user_feedback.txt") > 0:
+            # Ein roter Punkt als Emoji
+            new_feedback_indicator = " 🔴"
+
     st.markdown("---")
-    with st.expander("ℹ️ About & Legal"):
+    # Der Titel des Expanders ändert sich jetzt, wenn Feedback da ist
+    with st.expander(f"ℹ️ About & Legal{new_feedback_indicator}"):
         st.caption("**Operator:** Markus Simmel\n\n**Contact:** legemasim@gmail.com")
         st.divider()
         st.write(f"📊 Total recipes generated: **{get_total_count()}**")
